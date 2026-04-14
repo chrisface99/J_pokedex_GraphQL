@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Pokédex — Gotta Catch 'Em All</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --red: #E3350D;
+            --red-dark: #B22A0A;
+            --yellow: #FFD700;
+            --yellow-glow: #FFE566;
+            --dark: #1a1a2e;
+            --darker: #0f0f1a;
+            --card-bg: #16213e;
+            --card-border: #0f3460;
+            --text: #e8eaf6;
+            --text-muted: #7986cb;
+            --white: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--darker);
+            color: var(--text);
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(227,53,13,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,215,0,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(15,52,96,0.3) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 15, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid var(--red);
+            box-shadow: 0 4px 30px rgba(227, 53, 13, 0.3);
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            height: 70px;
+        }
+
+        .logo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 16px;
+            color: var(--yellow);
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 2px 2px 0 var(--red);
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+
+        .logo span { color: var(--red); text-shadow: 0 0 20px rgba(227,53,13,0.5); }
+
+        /* Search bar */
+        .search-form {
+            flex: 1;
+            display: flex;
+            gap: 12px;
+            max-width: 700px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(255,255,255,0.07);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            padding: 10px 20px;
+            color: var(--text);
+            font-family: 'Nunito', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--yellow);
+            background: rgba(255,215,0,0.05);
+            box-shadow: 0 0 20px rgba(255,215,0,0.15);
+        }
+
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .search-btn {
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 24px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            background: var(--red-dark);
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(227,53,13,0.4);
+        }
+
+        /* Type filter */
+        .type-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 24px;
+        }
+
+        .type-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: none;
+            font-family: 'Nunito', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: capitalize;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .type-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .type-btn.active { outline: 3px solid white; outline-offset: 2px; }
+
+        /* Main content */
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Results info */
+        .results-info {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Pokemon Grid */
+        .pokemon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* Pokemon Card */
+        .pokemon-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-decoration: none;
+            color: var(--text);
+            display: block;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        .pokemon-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .pokemon-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(255,215,0,0.4);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(255,215,0,0.1);
+        }
+
+        .pokemon-card:hover .pokemon-img {
+            transform: scale(1.15) translateY(-4px);
+            filter: drop-shadow(0 10px 20px rgba(255,215,0,0.3));
+        }
+
+        .pokemon-number {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .pokemon-img-wrap {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 12px;
+            position: relative;
+        }
+
+        .pokemon-img-bg {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+        }
+
+        .pokemon-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pokemon-name {
+            font-size: 15px;
+            font-weight: 900;
+            text-transform: capitalize;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .type-badges {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .type-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 10px;
+            text-transform: capitalize;
+            letter-spacing: 0.5px;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .page-btn:hover, .page-btn.active {
+            background: var(--red);
+            border-color: var(--red);
+            transform: scale(1.05);
+        }
+
+        .page-btn.active {
+            background: var(--red);
+            box-shadow: 0 4px 15px rgba(227,53,13,0.4);
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 80px 20px;
+            grid-column: 1 / -1;
+        }
+
+        .no-results .pokeball-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: block;
+            animation: spin 4s linear infinite;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Stagger animation delays */
+        .pokemon-card:nth-child(1) { animation-delay: 0.02s; }
+        .pokemon-card:nth-child(2) { animation-delay: 0.04s; }
+        .pokemon-card:nth-child(3) { animation-delay: 0.06s; }
+        .pokemon-card:nth-child(4) { animation-delay: 0.08s; }
+        .pokemon-card:nth-child(5) { animation-delay: 0.10s; }
+        .pokemon-card:nth-child(6) { animation-delay: 0.12s; }
+        .pokemon-card:nth-child(7) { animation-delay: 0.14s; }
+        .pokemon-card:nth-child(8) { animation-delay: 0.16s; }
+        .pokemon-card:nth-child(9) { animation-delay: 0.18s; }
+        .pokemon-card:nth-child(10) { animation-delay: 0.20s; }
+        .pokemon-card:nth-child(11) { animation-delay: 0.22s; }
+        .pokemon-card:nth-child(12) { animation-delay: 0.24s; }
+
+        /* Clear search */
+        .clear-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            margin-left: 12px;
+            transition: color 0.2s;
+        }
+        .clear-link:hover { color: var(--yellow); }
+
+        /* Type colors */
+        .type-normal { background: #A8A878; color: #fff; }
+        .type-fire { background: #F08030; color: #fff; }
+        .type-water { background: #6890F0; color: #fff; }
+        .type-electric { background: #F8D030; color: #444; }
+        .type-grass { background: #78C850; color: #fff; }
+        .type-ice { background: #98D8D8; color: #444; }
+        .type-fighting { background: #C03028; color: #fff; }
+        .type-poison { background: #A040A0; color: #fff; }
+        .type-ground { background: #E0C068; color: #444; }
+        .type-flying { background: #A890F0; color: #fff; }
+        .type-psychic { background: #F85888; color: #fff; }
+        .type-bug { background: #A8B820; color: #fff; }
+        .type-rock { background: #B8A038; color: #fff; }
+        .type-ghost { background: #705898; color: #fff; }
+        .type-dragon { background: #7038F8; color: #fff; }
+        .type-dark { background: #705848; color: #fff; }
+        .type-steel { background: #B8B8D0; color: #444; }
+        .type-fairy { background: #EE99AC; color: #fff; }
+
+        /* Card type tint */
+        .card-fire::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(240,128,48,0.1) 0%, transparent 60%); pointer-events: none; }
+        .card-water::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(104,144,240,0.1) 0%, transparent 60%); pointer-events: none; }
+        .card-grass::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(120,200,80,0.1) 0%, transparent 60%); pointer-events: none; }
+        .card-electric::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(248,208,48,0.1) 0%, transparent 60%); pointer-events: none; }
+        .card-psychic::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(248,88,136,0.1) 0%, transparent 60%); pointer-events: none; }
+        .card-dragon::after { content: ''; position: absolute; inset: 0; border-radius: 20px; background: radial-gradient(circle at 50% 100%, rgba(112,56,248,0.1) 0%, transparent 60%); pointer-events: none; }
+
+        @media (max-width: 768px) {
+            .logo { font-size: 11px; }
+            .header-inner { height: 60px; }
+            .pokemon-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <a href="/" class="logo" style="text-decoration:none">POKÉ<span>DEX</span></a>
+        <form class="search-form" method="get" action="/">
+            <input 
+                type="text" 
+                name="search" 
+                class="search-input" 
+                placeholder="Search by name or number..." 
+                th:value="${search}"
+                autocomplete="off"
+            />
+            <input type="hidden" name="type" th:value="${type}"/>
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="type-filter">
+        <a th:href="@{/(type='')}" 
+           class="type-btn" 
+           th:classappend="${type == '' || type == null} ? 'active' : ''"
+           style="background: rgba(255,255,255,0.1); color: white;">All</a>
+        <a th:each="t : ${types}"
+           th:href="@{/(type=${t})}"
+           th:text="${t}"
+           class="type-btn"
+           th:classappend="'type-' + ${t} + (${type == t} ? ' active' : '')">
+        </a>
+    </div>
+</header>
+
+<main>
+    <div class="results-info" th:if="${search != null && !search.isEmpty()}">
+        <span>Search results for "<strong th:text="${search}"></strong>"</span>
+        <a href="/" class="clear-link">✕ Clear</a>
+    </div>
+
+    <div class="results-info" th:if="${type != null && !type.isEmpty() && (search == null || search.isEmpty())}">
+        <span>Showing <strong th:text="${type}"></strong> type Pokémon</span>
+        <a href="/" class="clear-link">✕ Clear</a>
+    </div>
+
+    <div class="pokemon-grid">
+        <a th:each="pokemon : ${pokemons}" 
+           th:href="@{/pokemon/{id}(id=${pokemon.id})}"
+           th:classappend="'pokemon-card card-' + ${pokemon.primaryType}"
+           class="pokemon-card">
+            <div class="pokemon-number" th:text="'#' + ${#strings.toString(pokemon.id).length() < 3 ? (#strings.toString(pokemon.id).length() == 1 ? '00' + pokemon.id : '0' + pokemon.id) : pokemon.id}"></div>
+            <div class="pokemon-img-wrap">
+                <div class="pokemon-img-bg"></div>
+                <img class="pokemon-img" 
+                     th:src="${pokemon.officialArtworkUrl}"
+                     th:alt="${pokemon.name}"
+                     loading="lazy"
+                     onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + this.dataset.id + '.png'"
+                     th:data-id="${pokemon.id}"/>
+            </div>
+            <div class="pokemon-name" th:text="${pokemon.name}"></div>
+            <div class="type-badges">
+                <span th:each="typeSlot : ${pokemon.types}"
+                      th:text="${typeSlot.type.name}"
+                      th:classappend="'type-badge type-' + ${typeSlot.type.name}">
+                </span>
+            </div>
+        </a>
+
+        <!-- No results -->
+        <div class="no-results" th:if="${#lists.isEmpty(pokemons)}">
+            <span class="pokeball-icon">⚫</span>
+            <h2 style="margin-bottom: 12px; font-size: 22px;">No Pokémon Found</h2>
+            <p style="color: var(--text-muted); font-size: 15px;">Try a different name, number, or type!</p>
+            <a href="/" style="display: inline-block; margin-top: 20px; padding: 12px 28px; background: var(--red); color: white; border-radius: 50px; text-decoration: none; font-weight: 800;">Browse All</a>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" th:if="${totalPages > 1 && (search == null || search.isEmpty()) && (type == null || type.isEmpty())}">
+        <a th:if="${currentPage > 0}" 
+           th:href="@{/(page=${currentPage - 1})}"
+           class="page-btn">← Prev</a>
+
+        <th:block th:with="start=${T(Math).max(0, currentPage - 3)}, end=${T(Math).min(totalPages - 1, currentPage + 3)}">
+            <a th:if="${start > 0}" th:href="@{/(page=0)}" class="page-btn">1</a>
+            <span th:if="${start > 1}" style="color: var(--text-muted); padding: 0 8px; font-weight: 800;">...</span>
+            
+            <a th:each="i : ${#numbers.sequence(start, end)}"
+               th:href="@{/(page=${i})}"
+               th:text="${i + 1}"
+               th:classappend="${i == currentPage} ? 'active' : ''"
+               class="page-btn">
+            </a>
+            
+            <span th:if="${end < totalPages - 2}" style="color: var(--text-muted); padding: 0 8px; font-weight: 800;">...</span>
+            <a th:if="${end < totalPages - 1}" th:href="@{/(page=${totalPages - 1})}" class="page-btn" th:text="${totalPages}"></a>
+        </th:block>
+
+        <a th:if="${currentPage < totalPages - 1}"
+           th:href="@{/(page=${currentPage + 1})}"
+           class="page-btn">Next →</a>
+    </div>
+</main>
+
+</body>
+</html>
